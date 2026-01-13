@@ -1,7 +1,10 @@
 package org.example.service;
 
 import lombok.RequiredArgsConstructor;
+import org.example.dto.VehicleDto;
+import org.example.dto.VehicleUpsertDto;
 import org.example.exception.ValidationException;
+import org.example.mapper.VehicleMapper;
 import org.example.model.Company;
 import org.example.model.Vehicle;
 import org.example.repository.CompanyRepository;
@@ -30,17 +33,42 @@ public class VehicleService {
         return vehicleRepository.save(vehicle);
     }
 
+    public VehicleDto createVehicleDto(VehicleUpsertDto dto) throws ValidationException {
+        if (dto == null || dto.companyId() == null) {
+            throw new ValidationException("Company ID is required");
+        }
+        Company company = companyRepository.findById(dto.companyId())
+                .orElseThrow(() -> new ValidationException("Company with ID " + dto.companyId() + " does not exist"));
+        Vehicle vehicle = new Vehicle();
+        VehicleMapper.applyUpsert(vehicle, dto);
+        vehicle.setCompany(company);
+        validate(vehicle);
+        return VehicleMapper.toDto(vehicleRepository.save(vehicle));
+    }
+
     public Vehicle getVehicleById(Integer id) {
         return vehicleRepository.findById(id)
                 .orElseThrow(() -> new org.example.exception.NotFoundException("Vehicle with ID " + id + " not found"));
+    }
+
+    public VehicleDto getVehicleDtoById(Integer id) {
+        return VehicleMapper.toDto(getVehicleById(id));
     }
 
     public List<Vehicle> getAllVehicles() {
         return vehicleRepository.findAll();
     }
 
+    public List<VehicleDto> getAllVehicleDtos() {
+        return getAllVehicles().stream().map(VehicleMapper::toDto).toList();
+    }
+
     public List<Vehicle> getVehiclesByCompanyId(Integer companyId) {
         return vehicleRepository.findByCompanyId(companyId);
+    }
+
+    public List<VehicleDto> getVehicleDtosByCompanyId(Integer companyId) {
+        return getVehiclesByCompanyId(companyId).stream().map(VehicleMapper::toDto).toList();
     }
 
     public Vehicle updateVehicle(Vehicle vehicle, Integer companyId) throws ValidationException {
@@ -55,6 +83,22 @@ public class VehicleService {
         vehicle.setCompany(company);
         validate(vehicle);
         return vehicleRepository.save(vehicle);
+    }
+
+    public VehicleDto updateVehicleDto(VehicleUpsertDto dto) throws ValidationException {
+        if (dto == null || dto.id() == null) {
+            throw new ValidationException("Vehicle ID is required for update");
+        }
+        if (dto.companyId() == null) {
+            throw new ValidationException("Company ID is required");
+        }
+        Vehicle vehicle = getVehicleById(dto.id());
+        Company company = companyRepository.findById(dto.companyId())
+                .orElseThrow(() -> new ValidationException("Company with ID " + dto.companyId() + " does not exist"));
+        VehicleMapper.applyUpsert(vehicle, dto);
+        vehicle.setCompany(company);
+        validate(vehicle);
+        return VehicleMapper.toDto(vehicleRepository.save(vehicle));
     }
 
     public void deleteVehicle(Integer id) {

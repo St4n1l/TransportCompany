@@ -1,5 +1,6 @@
 package org.example.util;
 
+import org.example.dto.TransportDto;
 import org.example.model.Transport;
 
 import java.io.*;
@@ -26,10 +27,27 @@ public class TransportFileIO {
         return sb.toString();
     }
 
+    public static String serializeTransportDtos(List<TransportDto> transports) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("ID|CompanyID|ClientID|VehicleID|DriverID|StartLocation|EndLocation|StartDate|EndDate|TransportType|CargoDescription|CargoWeight|PassengerCount|Price|IsPaid");
+        sb.append(System.lineSeparator());
+        for (TransportDto transport : transports) {
+            sb.append(formatTransportDto(transport)).append(System.lineSeparator());
+        }
+        return sb.toString();
+    }
+
     public static void saveTransportsToFile(List<Transport> transports, String filePath) throws IOException {
         Path path = Paths.get(filePath);
         try (BufferedWriter writer = Files.newBufferedWriter(path)) {
             writer.write(serializeTransports(transports));
+        }
+    }
+
+    public static void saveTransportDtosToFile(List<TransportDto> transports, String filePath) throws IOException {
+        Path path = Paths.get(filePath);
+        try (BufferedWriter writer = Files.newBufferedWriter(path)) {
+            writer.write(serializeTransportDtos(transports));
         }
     }
 
@@ -64,7 +82,6 @@ public class TransportFileIO {
         }
         
         try (BufferedReader reader = Files.newBufferedReader(path)) {
-            // Skip header
             String line = reader.readLine();
             if (line == null || !line.startsWith("ID")) {
                 return transports;
@@ -100,6 +117,26 @@ public class TransportFileIO {
         sb.append(transport.getPassengerCount() != null ? transport.getPassengerCount() : "").append(DELIMITER);
         sb.append(transport.getPrice() != null ? transport.getPrice() : "").append(DELIMITER);
         sb.append(transport.getIsPaid() != null ? transport.getIsPaid() : false);
+        return sb.toString();
+    }
+
+    private static String formatTransportDto(TransportDto transport) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(transport.id() != null ? transport.id() : "").append(DELIMITER);
+        sb.append(transport.companyId() != null ? transport.companyId() : "").append(DELIMITER);
+        sb.append(transport.clientId() != null ? transport.clientId() : "").append(DELIMITER);
+        sb.append(transport.vehicleId() != null ? transport.vehicleId() : "").append(DELIMITER);
+        sb.append(transport.driverId() != null ? transport.driverId() : "").append(DELIMITER);
+        sb.append(transport.startLocation() != null ? transport.startLocation() : "").append(DELIMITER);
+        sb.append(transport.endLocation() != null ? transport.endLocation() : "").append(DELIMITER);
+        sb.append(transport.startDate() != null ? transport.startDate().format(DATE_FORMATTER) : "").append(DELIMITER);
+        sb.append(transport.endDate() != null ? transport.endDate().format(DATE_FORMATTER) : "").append(DELIMITER);
+        sb.append(transport.transportType() != null ? transport.transportType() : "").append(DELIMITER);
+        sb.append(transport.cargoDescription() != null ? transport.cargoDescription() : "").append(DELIMITER);
+        sb.append(transport.cargoWeight() != null ? transport.cargoWeight() : "").append(DELIMITER);
+        sb.append(transport.passengerCount() != null ? transport.passengerCount() : "").append(DELIMITER);
+        sb.append(transport.price() != null ? transport.price() : "").append(DELIMITER);
+        sb.append(transport.isPaid() != null ? transport.isPaid() : false);
         return sb.toString();
     }
 
@@ -151,4 +188,5 @@ public class TransportFileIO {
         }
     }
 }
+
 

@@ -23,3 +23,4 @@ public interface EmployeeRepository extends JpaRepository<Employee, Integer> {
     List<Employee> findByQualificationContainingIgnoreCase(String qualification);
 }
 
+

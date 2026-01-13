@@ -1,7 +1,10 @@
 package org.example.service;
 
 import lombok.RequiredArgsConstructor;
+import org.example.dto.EmployeeDto;
+import org.example.dto.EmployeeUpsertDto;
 import org.example.exception.ValidationException;
+import org.example.mapper.EmployeeMapper;
 import org.example.model.Company;
 import org.example.model.Employee;
 import org.example.repository.CompanyRepository;
@@ -30,29 +33,66 @@ public class EmployeeService {
         return employeeRepository.save(employee);
     }
 
+    public EmployeeDto createEmployeeDto(EmployeeUpsertDto dto) throws ValidationException {
+        if (dto == null || dto.companyId() == null) {
+            throw new ValidationException("Company ID is required");
+        }
+        Company company = companyRepository.findById(dto.companyId())
+                .orElseThrow(() -> new ValidationException("Company with ID " + dto.companyId() + " does not exist"));
+        Employee employee = new Employee();
+        EmployeeMapper.applyUpsert(employee, dto);
+        employee.setCompany(company);
+        validate(employee);
+        return EmployeeMapper.toDto(employeeRepository.save(employee));
+    }
+
     public Employee getEmployeeById(Integer id) {
         return employeeRepository.findById(id)
                 .orElseThrow(() -> new org.example.exception.NotFoundException("Employee with ID " + id + " not found"));
+    }
+
+    public EmployeeDto getEmployeeDtoById(Integer id) {
+        return EmployeeMapper.toDto(getEmployeeById(id));
     }
 
     public List<Employee> getAllEmployees() {
         return employeeRepository.findAll();
     }
 
+    public List<EmployeeDto> getAllEmployeeDtos() {
+        return getAllEmployees().stream().map(EmployeeMapper::toDto).toList();
+    }
+
     public List<Employee> getEmployeesByCompanyId(Integer companyId) {
         return employeeRepository.findByCompanyId(companyId);
+    }
+
+    public List<EmployeeDto> getEmployeeDtosByCompanyId(Integer companyId) {
+        return getEmployeesByCompanyId(companyId).stream().map(EmployeeMapper::toDto).toList();
     }
 
     public List<Employee> getAllEmployeesSortedByQualification() {
         return employeeRepository.findAllOrderByQualification();
     }
 
+    public List<EmployeeDto> getAllEmployeeDtosSortedByQualification() {
+        return getAllEmployeesSortedByQualification().stream().map(EmployeeMapper::toDto).toList();
+    }
+
     public List<Employee> getAllEmployeesSortedBySalary() {
         return employeeRepository.findAllOrderBySalaryDesc();
     }
 
+    public List<EmployeeDto> getAllEmployeeDtosSortedBySalary() {
+        return getAllEmployeesSortedBySalary().stream().map(EmployeeMapper::toDto).toList();
+    }
+
     public List<Employee> getEmployeesByQualification(String qualification) {
         return employeeRepository.findByQualificationContainingIgnoreCase(qualification);
+    }
+
+    public List<EmployeeDto> getEmployeeDtosByQualification(String qualification) {
+        return getEmployeesByQualification(qualification).stream().map(EmployeeMapper::toDto).toList();
     }
 
     public Employee updateEmployee(Employee employee, Integer companyId) throws ValidationException {
@@ -67,6 +107,22 @@ public class EmployeeService {
         employee.setCompany(company);
         validate(employee);
         return employeeRepository.save(employee);
+    }
+
+    public EmployeeDto updateEmployeeDto(EmployeeUpsertDto dto) throws ValidationException {
+        if (dto == null || dto.id() == null) {
+            throw new ValidationException("Employee ID is required for update");
+        }
+        if (dto.companyId() == null) {
+            throw new ValidationException("Company ID is required");
+        }
+        Employee employee = getEmployeeById(dto.id());
+        Company company = companyRepository.findById(dto.companyId())
+                .orElseThrow(() -> new ValidationException("Company with ID " + dto.companyId() + " does not exist"));
+        EmployeeMapper.applyUpsert(employee, dto);
+        employee.setCompany(company);
+        validate(employee);
+        return EmployeeMapper.toDto(employeeRepository.save(employee));
     }
 
     public void deleteEmployee(Integer id) {
