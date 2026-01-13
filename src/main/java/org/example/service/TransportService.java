@@ -1,7 +1,10 @@
 package org.example.service;
 
 import lombok.RequiredArgsConstructor;
+import org.example.dto.TransportDto;
+import org.example.dto.TransportUpsertDto;
 import org.example.exception.ValidationException;
+import org.example.mapper.TransportMapper;
 import org.example.model.*;
 import org.example.repository.*;
 import org.springframework.stereotype.Service;
@@ -45,29 +48,81 @@ public class TransportService {
         return saved;
     }
 
+    public TransportDto createTransportDto(TransportUpsertDto dto) throws ValidationException {
+        if (dto == null || dto.companyId() == null) {
+            throw new ValidationException("Company ID is required");
+        }
+        if (dto.clientId() == null) {
+            throw new ValidationException("Client ID is required");
+        }
+
+        Company company = companyRepository.findById(dto.companyId())
+                .orElseThrow(() -> new ValidationException("Company with ID " + dto.companyId() + " does not exist"));
+        Client client = clientRepository.findById(dto.clientId())
+                .orElseThrow(() -> new ValidationException("Client with ID " + dto.clientId() + " does not exist"));
+        Vehicle vehicle = dto.vehicleId() != null ? vehicleRepository.findById(dto.vehicleId()).orElse(null) : null;
+        Employee driver = dto.driverId() != null ? employeeRepository.findById(dto.driverId()).orElse(null) : null;
+
+        Transport transport = new Transport();
+        TransportMapper.applyUpsert(transport, dto);
+        transport.setCompany(company);
+        transport.setClient(client);
+        transport.setVehicle(vehicle);
+        transport.setDriver(driver);
+
+        validate(transport);
+        Transport saved = transportRepository.save(transport);
+        updateCompanyRevenue(dto.companyId());
+        return TransportMapper.toDto(saved);
+    }
+
     public Transport getTransportById(Integer id) {
         return transportRepository.findById(id)
                 .orElseThrow(() -> new org.example.exception.NotFoundException("Transport with ID " + id + " not found"));
+    }
+
+    public TransportDto getTransportDtoById(Integer id) {
+        return TransportMapper.toDto(getTransportById(id));
     }
 
     public List<Transport> getAllTransports() {
         return transportRepository.findAll();
     }
 
+    public List<TransportDto> getAllTransportDtos() {
+        return getAllTransports().stream().map(TransportMapper::toDto).toList();
+    }
+
     public List<Transport> getTransportsByDestination(String destination) {
         return transportRepository.findByDestination(destination);
+    }
+
+    public List<TransportDto> getTransportDtosByDestination(String destination) {
+        return getTransportsByDestination(destination).stream().map(TransportMapper::toDto).toList();
     }
 
     public List<Transport> getAllTransportsSortedByDestination() {
         return transportRepository.findAllOrderByDestination();
     }
 
+    public List<TransportDto> getAllTransportDtosSortedByDestination() {
+        return getAllTransportsSortedByDestination().stream().map(TransportMapper::toDto).toList();
+    }
+
     public List<Transport> getTransportsByCompanyId(Integer companyId) {
         return transportRepository.findByCompanyId(companyId);
     }
 
+    public List<TransportDto> getTransportDtosByCompanyId(Integer companyId) {
+        return getTransportsByCompanyId(companyId).stream().map(TransportMapper::toDto).toList();
+    }
+
     public List<Transport> getTransportsByDriverId(Integer driverId) {
         return transportRepository.findByDriverId(driverId);
+    }
+
+    public List<TransportDto> getTransportDtosByDriverId(Integer driverId) {
+        return getTransportsByDriverId(driverId).stream().map(TransportMapper::toDto).toList();
     }
 
     public List<Transport> getTransportsByDateRange(Integer companyId, LocalDateTime startDate, LocalDateTime endDate) {
@@ -100,6 +155,37 @@ public class TransportService {
         return saved;
     }
 
+    public TransportDto updateTransportDto(TransportUpsertDto dto) throws ValidationException {
+        if (dto == null || dto.id() == null) {
+            throw new ValidationException("Transport ID is required for update");
+        }
+        if (dto.companyId() == null) {
+            throw new ValidationException("Company ID is required");
+        }
+        if (dto.clientId() == null) {
+            throw new ValidationException("Client ID is required");
+        }
+
+        Transport transport = getTransportById(dto.id());
+        Company company = companyRepository.findById(dto.companyId())
+                .orElseThrow(() -> new ValidationException("Company with ID " + dto.companyId() + " does not exist"));
+        Client client = clientRepository.findById(dto.clientId())
+                .orElseThrow(() -> new ValidationException("Client with ID " + dto.clientId() + " does not exist"));
+        Vehicle vehicle = dto.vehicleId() != null ? vehicleRepository.findById(dto.vehicleId()).orElse(null) : null;
+        Employee driver = dto.driverId() != null ? employeeRepository.findById(dto.driverId()).orElse(null) : null;
+
+        TransportMapper.applyUpsert(transport, dto);
+        transport.setCompany(company);
+        transport.setClient(client);
+        transport.setVehicle(vehicle);
+        transport.setDriver(driver);
+
+        validate(transport);
+        Transport saved = transportRepository.save(transport);
+        updateCompanyRevenue(dto.companyId());
+        return TransportMapper.toDto(saved);
+    }
+
     public void deleteTransport(Integer id) {
         Transport transport = transportRepository.findById(id).orElse(null);
         if (transport != null) {
@@ -113,6 +199,10 @@ public class TransportService {
         Transport transport = getTransportById(transportId);
         transport.setIsPaid(true);
         return transportRepository.save(transport);
+    }
+
+    public TransportDto markAsPaidDto(Integer transportId) {
+        return TransportMapper.toDto(markAsPaid(transportId));
     }
 
     private void updateCompanyRevenue(Integer companyId) {
